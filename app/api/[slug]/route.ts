@@ -4,28 +4,32 @@ import path from "path";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> },
+  { params }: { params: { slug: string } },
 ) {
-  const { slug } = await params;
+  const { slug } = params;
+
+  const SURECITY_FRONTEND_URL = "YOUR_SURECITY_FRONTEND_URL_HERE";
 
   const origin = request.headers.get("origin");
 
+  const corsHeaders: HeadersInit = {
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
+  };
+
+  if (origin === SURECITY_FRONTEND_URL) {
+    corsHeaders["Access-Control-Allow-Origin"] = SURECITY_FRONTEND_URL;
+  } else {
+  }
+
   if (request.method === "OPTIONS") {
-    const headers: HeadersInit = {
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-      "Access-Control-Max-Age": "86400",
-
-      "Access-Control-Allow-Origin": "*",
-    };
-
-    return new NextResponse(null, { status: 200, headers });
+    return new NextResponse(null, { status: 200, headers: corsHeaders });
   }
 
   const responseHeaders: HeadersInit = {
     "Content-Type": "application/json",
-
-    "Access-Control-Allow-Origin": "*",
+    ...corsHeaders,
   };
 
   if (slug === "data") {
@@ -36,15 +40,20 @@ export async function GET(
       jsonData = await fsPromises.readFile(filePath, "utf-8");
     } catch (error) {
       console.error("Error reading data.json:", error);
-
       return NextResponse.json(
         { message: "Error reading data file." },
-        { status: 500 },
+        { status: 500, headers: responseHeaders },
       );
     }
 
     const json = JSON.parse(jsonData);
 
+    if (!Array.isArray(json) || json.length === 0) {
+      return NextResponse.json(
+        { message: "Data format invalid or empty." },
+        { status: 500, headers: responseHeaders },
+      );
+    }
     const data = json[0];
 
     return NextResponse.json(
@@ -54,7 +63,7 @@ export async function GET(
   } else {
     return NextResponse.json(
       { message: `No data sent for slug: ${slug}` },
-      { status: 404 },
+      { status: 404, headers: responseHeaders },
     );
   }
 }
