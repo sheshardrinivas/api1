@@ -11,9 +11,16 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  const allowedOrigins = [frontendUrl, frontendUrl2];
+  const allowedOrigins = [frontendUrl, frontendUrl2].filter(Boolean);
 
   const origin = request.headers.get("origin");
+
+  console.log("--- API Route Request Log ---");
+  console.log("Request Method:", request.method);
+  console.log("Request Slug:", slug);
+  console.log("Request Origin Header:", origin);
+  console.log("Configured Allowed Origins:", allowedOrigins);
+  console.log("--- End Debugging Logs ---");
 
   if (request.method === "OPTIONS") {
     const headers: HeadersInit = {
@@ -21,17 +28,23 @@ export async function GET(
 
       "Access-Control-Allow-Headers": "Content-Type",
 
-      "Access-Control-Max-Age": "86400", // 24 hours
+      "Access-Control-Max-Age": "86400",
     };
 
     if (origin && allowedOrigins.includes(origin)) {
       headers["Access-Control-Allow-Origin"] = origin;
+      console.log(
+        `Preflight: Setting Access-Control-Allow-Origin to: ${origin}`,
+      );
+    } else {
+      console.log(`Preflight: Origin ${origin} not in allowed list.`);
     }
 
     return new NextResponse(null, { status: 200, headers });
   }
 
   if (origin && !allowedOrigins.includes(origin)) {
+    console.warn(`Forbidden: Request origin '${origin}' is not allowed.`);
     return NextResponse.json(
       { message: "Forbidden: Origin not allowed." },
       { status: 403 },
@@ -41,10 +54,12 @@ export async function GET(
   if (slug === "data") {
     const filePath = path.join(process.cwd(), "data.json");
     let jsonData: string;
+
     try {
       jsonData = await fsPromises.readFile(filePath, "utf-8");
     } catch (error) {
       console.error("Error reading data.json:", error);
+
       return NextResponse.json(
         { message: "Error reading data file." },
         { status: 500 },
@@ -52,6 +67,7 @@ export async function GET(
     }
 
     const json = JSON.parse(jsonData);
+
     const data = json[0];
 
     const responseHeaders: HeadersInit = {
@@ -60,6 +76,13 @@ export async function GET(
 
     if (origin && allowedOrigins.includes(origin)) {
       responseHeaders["Access-Control-Allow-Origin"] = origin;
+      console.log(
+        `GET response: Setting Access-Control-Allow-Origin to: ${origin}`,
+      );
+    } else if (!origin) {
+      console.log(
+        "GET response: No origin header or origin not in allowed list. ACAO not set.",
+      );
     }
 
     return NextResponse.json(
@@ -67,6 +90,7 @@ export async function GET(
       { headers: responseHeaders },
     );
   } else {
+    console.log(`No data handler for slug: ${slug}`);
     return NextResponse.json(
       { message: `No data sent for slug: ${slug}` },
       { status: 404 },
