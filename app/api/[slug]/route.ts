@@ -39,10 +39,10 @@ export async function GET(
       jsonData = await fsPromises.readFile(filePath, "utf-8");
     } catch (error) {
       console.error("Error reading data.json with fs:", error);
-
       return NextResponse.json(
         {
-          message: "Error reading data file. (Likely filesystem access issue)",
+          message:
+            "Error reading data file. (Check deployment environment for fs access)",
         },
         { status: 500, headers: responseHeaders },
       );
