@@ -8,7 +8,7 @@ export async function GET(
 ) {
   const { slug } = params;
 
-  const SURECITY_FRONTEND_URL = "YOUR_SURECITY_FRONTEND_URL_HERE";
+  const SURECITY_FRONTEND_URL = "https://code-logic-frontend.netlify.app/";
 
   const origin = request.headers.get("origin");
 
