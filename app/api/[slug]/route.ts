@@ -1,62 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fsPromises } from "fs";
+import { readFileSync, promises as fsPromises } from "fs";
 import path from "path";
+const frontendUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+const frontendUrl2 = process.env.NEXT_PUBLIC_API_BASE_URL2;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } },
+  { params }: { params: Promise<{ slug: string }> },
 ) {
-  const { slug } = params;
+  const { slug } = await params;
 
-  const SURECITY_FRONTEND_URL = "https://code-logic-frontend.netlify.app/";
+  const allowedOrigins = [frontendUrl];
 
   const origin = request.headers.get("origin");
 
-  const corsHeaders: HeadersInit = {
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Max-Age": "86400",
-  };
-
-  if (origin === SURECITY_FRONTEND_URL) {
-    corsHeaders["Access-Control-Allow-Origin"] = SURECITY_FRONTEND_URL;
-  }
-
   if (request.method === "OPTIONS") {
-    return new NextResponse(null, { status: 200, headers: corsHeaders });
+    const headers: HeadersInit = {
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Max-Age": "86400",
+    };
+    if (origin && allowedOrigins.includes(origin)) {
+      headers["Access-Control-Allow-Origin"] = origin;
+    }
+    return new NextResponse(null, { status: 200, headers });
   }
 
-  const responseHeaders: HeadersInit = {
-    "Content-Type": "application/json",
-    ...corsHeaders,
-  };
+  if (origin && !allowedOrigins.includes(origin)) {
+    return NextResponse.json(
+      { message: "Forbidden: Origin not allowed." },
+      { status: 403 },
+    );
+  }
 
   if (slug === "data") {
     const filePath = path.join(process.cwd(), "data.json");
-    let jsonData: string;
-
-    try {
-      jsonData = await fsPromises.readFile(filePath, "utf-8");
-    } catch (error) {
-      console.error("Error reading data.json with fs:", error);
-      return NextResponse.json(
-        {
-          message:
-            "Error reading data file. (Check deployment environment for fs access)",
-        },
-        { status: 500, headers: responseHeaders },
-      );
-    }
-
+    const jsonData = await fsPromises.readFile(filePath, "utf-8");
     const json = JSON.parse(jsonData);
 
-    if (!Array.isArray(json) || json.length === 0) {
-      return NextResponse.json(
-        { message: "Data format invalid or empty." },
-        { status: 500, headers: responseHeaders },
-      );
-    }
     const data = json[0];
+
+    const responseHeaders: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    if (origin && allowedOrigins.includes(origin)) {
+      responseHeaders["Access-Control-Allow-Origin"] = origin;
+    }
 
     return NextResponse.json(
       { ai_words: data.ai_like_words, human_words: data.human_like_words },
@@ -65,7 +55,7 @@ export async function GET(
   } else {
     return NextResponse.json(
       { message: `No data sent for slug: ${slug}` },
-      { status: 404, headers: responseHeaders },
+      { status: 404 },
     );
   }
 }
