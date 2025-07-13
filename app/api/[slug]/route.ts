@@ -10,7 +10,7 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  const allowedOrigins = [frontendUrl, frontendUrl2];
+  const allowedOrigins = [frontendUrl];
 
   const origin = request.headers.get("origin");
 
