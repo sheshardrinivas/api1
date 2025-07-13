@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFileSync, promises as fsPromises } from "fs";
+import { promises as fsPromises } from "fs";
 import path from "path";
 
 export async function GET(
@@ -20,7 +20,6 @@ export async function GET(
 
   if (origin === SURECITY_FRONTEND_URL) {
     corsHeaders["Access-Control-Allow-Origin"] = SURECITY_FRONTEND_URL;
-  } else {
   }
 
   if (request.method === "OPTIONS") {
@@ -39,9 +38,12 @@ export async function GET(
     try {
       jsonData = await fsPromises.readFile(filePath, "utf-8");
     } catch (error) {
-      console.error("Error reading data.json:", error);
+      console.error("Error reading data.json with fs:", error);
+
       return NextResponse.json(
-        { message: "Error reading data file." },
+        {
+          message: "Error reading data file. (Likely filesystem access issue)",
+        },
         { status: 500, headers: responseHeaders },
       );
     }
